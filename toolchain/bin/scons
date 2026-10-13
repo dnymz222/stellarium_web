@@ -1,0 +1,5 @@
+#!/bin/sh
+# scons 3.1.2 from pip installs into a flat "scons/SCons" dir, so SCons is not
+# importable from site-packages directly.
+export PYTHONPATH="$HOME/Library/Python/3.9/lib/python/site-packages/scons${PYTHONPATH:+:$PYTHONPATH}"
+exec python3 -m SCons "$@"
