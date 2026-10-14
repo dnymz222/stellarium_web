@@ -409,6 +409,15 @@ void designation_cleanup(const char *dsgn, char *out, int size, int flags)
         return;
     }
 
+    // Bare proper names (no catalog prefix, no number) are translated as
+    // well, so that star and dso common names follow the current language.
+    if ((flags & DSGN_TRANSLATE) && strncmp(dsgn, "* ", 2) != 0 &&
+            strncmp(dsgn, "V* ", 3) != 0 &&
+            !strpbrk(dsgn, "0123456789")) {
+        snprintf(out, size, "%s", sys_translate("sky", dsgn));
+        return;
+    }
+
     if (flags & DSGN_EXPAND_CAT) {
         if (strncmp(dsgn, "M ", 2) == 0) {
             snprintf(out, size, "Messier %s", dsgn + 2);

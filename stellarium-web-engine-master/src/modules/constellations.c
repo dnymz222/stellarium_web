@@ -820,6 +820,16 @@ static bool should_render_label(
     return true;
 }
 
+static bool landscape_hides_below_horizon(void)
+{
+    obj_t *ls = core_get_module("landscapes");
+    bool visible = false;
+
+    if (!ls) return false;
+    obj_get_attr(ls, "visible", &visible);
+    return visible;
+}
+
 static int render_label(constellation_t *con, const painter_t *painter_,
                         bool selected)
 {
@@ -839,10 +849,23 @@ static int render_label(constellation_t *con, const painter_t *painter_,
     if (painter_is_cap_clipped(&painter, FRAME_ICRF, con->lines.cap))
         return 0;
 
-    res = skycultures_get_label(con->info.id, label, sizeof(label));
-    if (!res) {
-        snprintf(label, sizeof(label), "%s", con->info.id);
+    // Labels are a screen space overlay: without this test they end up drawn
+    // over an opaque landscape, because the core disables horizon clipping as
+    // soon as the view points below the horizon.
+    if (landscape_hides_below_horizon()) {
+        double p[3];
+        convert_frame(painter.obs, FRAME_ICRF, FRAME_OBSERVED, true,
+                      con->lines.cap, p);
+        if (p[2] < 0) return 0;
     }
+
+    res = skycultures_get_label(con->info.id, label, sizeof(label));
+    if (!res)
+        snprintf(label, sizeof(label), "%s", con->info.id);
+
+    // Sky cultures hand out untranslated native (latin) names; run the result
+    // through the sky translations so labels follow the interface language.
+    snprintf(label, sizeof(label), "%s", sys_translate("sky", label));
 
     max_label_len = u8_split_line(label, sizeof(label), label, 15);
 

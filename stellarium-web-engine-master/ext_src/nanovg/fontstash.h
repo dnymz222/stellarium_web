@@ -789,9 +789,16 @@ static FONSstate* fons__getState(FONScontext* stash)
 
 int fonsAddFallbackFont(FONScontext* stash, int base, int fallback)
 {
+	int i;
+
 	FONSfont* baseFont = stash->fonts[base];
 	if (baseFont->nfallbacks < FONS_MAX_FALLBACKS) {
 		baseFont->fallbacks[baseFont->nfallbacks++] = fallback;
+		// Glyphs cached before this fallback was added may have resolved to
+		// .notdef; drop the cache so they are looked up again.
+		baseFont->nglyphs = 0;
+		for (i = 0; i < FONS_HASH_LUT_SIZE; i++)
+			baseFont->lut[i] = -1;
 		return 1;
 	}
 	return 0;

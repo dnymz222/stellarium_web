@@ -45,7 +45,9 @@ Module.afterInit(function() {
     g_ret.push(id);
   }, 'vi');
   let g_obj_get_designations_callback = Module.addFunction(function(o, u, v) {
-    g_ret.push(v);
+    // Copy now: the C side may reuse a single scratch buffer for every
+    // designation, so the pointer is only valid during the callback.
+    g_ret.push(Module.UTF8ToString(v));
   }, 'viii');
   let g_module_list_obj2 = Module.addFunction(function(user, obj) {
     g_ret.push(obj);
@@ -169,7 +171,7 @@ Module.afterInit(function() {
   SweObj.prototype.designations = function() {
     g_ret = [];
     Module._obj_get_designations(this.v, 0, g_obj_get_designations_callback);
-    let ret = g_ret.map(function(v) {return Module.UTF8ToString(v)});
+    let ret = g_ret.slice();
     // Remove duplicates.
     // This should be done in the C code, but for the moment it's simpler
     // here.

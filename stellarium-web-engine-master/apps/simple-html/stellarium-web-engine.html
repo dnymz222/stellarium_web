@@ -52,10 +52,81 @@
   .license p { margin-bottom: 8px; }
   .license a { color: #82b1ff; }
 
+  .view-settings { padding: 0 10px; }
+  .view-setting { margin-top: 0; margin-bottom: 4px; }
+  .lang-group { padding: 0 10px; margin-top: 0; }
+  .lang-item { margin-top: 0; margin-bottom: 2px; }
+
+  .pv-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .pv-name { flex: 0 0 68px; }
+  .pv-time { flex: 0 0 46px; font-size: 12px; }
+  .pv-track {
+    position: relative;
+    flex: 1 1 auto;
+    height: 14px;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .pv-bar {
+    position: absolute;
+    top: 3px;
+    height: 8px;
+    background: rgb(200, 200, 50);
+  }
+  .pv-scale {
+    display: flex;
+    justify-content: space-between;
+    height: auto;
+    overflow: visible;
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+
+  .sel-type {
+    color: #9e9e9e;
+    font-size: 13px;
+    margin-top: 2px;
+  }
+  .sel-aka {
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: #9e9e9e;
+  }
+  .sel-aka-item {
+    margin-right: 12px;
+    color: #e0e0e0;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .sel-aka-toggle { display: inline; }
+  .sel-summary {
+    margin-top: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #eeeeee;
+  }
+  .sel-summary p { margin: 0 0 6px; }
+  .sel-summary h2, .sel-summary h3, .sel-summary h4 {
+    font-size: 13px;
+    font-weight: 500;
+    color: #dddddd;
+    margin: 10px 0 4px;
+  }
+  .sel-summary .wi-toggle {
+    color: #62d1df;
+    cursor: pointer;
+    margin-top: 2px;
+  }
+
   .time-control {
     display: flex;
     align-items: center;
-    margin-left: 8px;
+    margin-left: auto;
   }
   .speed-label {
     font-family: monospace;
@@ -77,6 +148,61 @@
     border-radius: 4px;
   }
   .time-btn { text-transform: none; line-height: 1.2; }
+
+  .stel-button {
+    position: relative;
+    flex: 0 0 auto;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin: 0 4px;
+    cursor: pointer;
+  }
+  .stel-button a {
+    display: block;
+    width: 100%;
+    height: 100%;
+    outline: none;
+  }
+  .stel-button a:focus-visible {
+    outline: 2px solid #82b1ff;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  .stel-button img {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .stel-button-label {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: rgba(33, 33, 33, 0.92);
+    color: #ffffff;
+    font-size: 12px;
+    line-height: 1.3;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+  }
+  .stel-button:hover .stel-button-label,
+  .stel-button:focus-within .stel-button-label {
+    opacity: 1;
+    visibility: visible;
+  }
+  .search-field {
+    flex: 0 1 340px;
+    min-width: 120px;
+  }
+  .search-field .v-input__slot {
+    background: rgba(0, 0, 0, 0.28) !important;
+    border-radius: 4px;
+  }
   .time-panel { padding: 12px 16px; }
   .time-panel-row {
     display: flex;
@@ -102,6 +228,13 @@
      runs inside an iframe without allow=fullscreen): hide the chrome instead. */
   body.pseudo-fs .v-app-bar,
   body.pseudo-fs .v-footer { display: none; }
+  .pseudo-fs-exit {
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    z-index: 1001;
+    opacity: 0.5;
+  }
 </style>
 
 <div id="nightmode"></div>
@@ -117,13 +250,37 @@
             <v-icon>settings</v-icon>
           </v-list-item-action>
           <v-list-item-content>
-            <v-list-item-title>Settings</v-list-item-title>
+            <v-list-item-title>{{ t('Settings') }}</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+        <v-list-item @click="planetsDialog = true; drawer = false">
+          <v-list-item-action>
+            <v-icon>mdi-panorama-fisheye</v-icon>
+          </v-list-item-action>
+          <v-list-item-content>
+            <v-list-item-title>{{ t('Planets Tonight') }}</v-list-item-title>
           </v-list-item-content>
         </v-list-item>
       </v-list>
       <v-divider></v-divider>
+      <v-subheader>{{ t('View settings') }}</v-subheader>
+      <div class="view-settings">
+        <v-checkbox v-for="s in viewSettings" :key="s.path" hide-details
+                    class="view-setting" :label="t(s.label)"
+                    :input-value="getAttr(s.path)"
+                    @change="v => setAttr(s.path, v)">
+        </v-checkbox>
+      </div>
+      <v-divider></v-divider>
+      <v-subheader>{{ t('Language') }}</v-subheader>
+      <v-radio-group class="lang-group" hide-details :value="lang"
+                     @change="setLang">
+        <v-radio v-for="l in langs" :key="l.code" :value="l.code"
+                 :label="l.name" dense class="lang-item"></v-radio>
+      </v-radio-group>
+      <v-divider></v-divider>
       <div class="license">
-        <div class="license-title">License</div>
+        <div class="license-title">{{ t('License') }}</div>
         <p>
           Stellarium Web Engine &copy; 2022 Stellarium Labs SRL.<br>
           This program is free software: you can redistribute it and/or modify
@@ -134,18 +291,46 @@
         </p>
         <p>
           <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank"
-             rel="noopener">GNU AGPL v3 full text</a><br>
+             rel="noopener">{{ t('GNU AGPL v3 full text') }}</a><br>
           <a href="https://github.com/Stellarium/stellarium-web-engine"
-             target="_blank" rel="noopener">Upstream source</a><br>
+             target="_blank" rel="noopener">{{ t('Upstream source') }}</a><br>
           <a href="https://github.com/dnymz222/stellarium_web" target="_blank"
-             rel="noopener">Source of this deployment</a>
+             rel="noopener">{{ t('Source of this deployment') }}</a>
         </p>
       </div>
     </v-navigation-drawer>
 
     <v-app-bar class="xsemi-transparent">
       <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
-      <v-toolbar-title>Stellarium<sup>Web</sup></v-toolbar-title>
+      <v-toolbar-title class="hidden-sm-and-down">Stellarium<sup>Web</sup></v-toolbar-title>
+      <v-menu v-model="searchMenu" :close-on-content-click="false"
+              offset-y bottom left max-height="320">
+        <template v-slot:activator="{ on }">
+          <v-text-field class="search-field ml-2" v-model="searchText" v-on="on"
+                        :label="t('Search...')"
+                        prepend-inner-icon="mdi-magnify"
+                        clearable dense flat solo hide-details
+                        color="white"
+                        @keydown.enter="searchFirst"
+                        @keydown.esc="searchText = ''"></v-text-field>
+        </template>
+        <v-card dark>
+          <v-list dense>
+            <v-list-item v-for="(it, i) in searchResults" :key="i"
+                         @click="pickSearch(it)">
+              <v-list-item-content>
+                <v-list-item-title>{{ it.label }}</v-list-item-title>
+                <v-list-item-subtitle v-if="it.sub">{{ it.sub }}</v-list-item-subtitle>
+              </v-list-item-content>
+            </v-list-item>
+            <v-list-item v-if="!searchResults.length">
+              <v-list-item-content>
+                <v-list-item-title class="grey--text">{{ t('No match') }}</v-list-item-title>
+              </v-list-item-content>
+            </v-list-item>
+          </v-list>
+        </v-card>
+      </v-menu>
       <v-spacer></v-spacer>
       <div v-if="stel && stel.core.progressbars.length">
         {{getProgress().title}}
@@ -154,56 +339,113 @@
       </div>
     </v-app-bar>
 
+    <v-btn v-if="pseudoFs" icon class="pseudo-fs-exit"
+           @click="setPseudoFs(false)">
+      <v-icon>mdi-fullscreen-exit</v-icon>
+    </v-btn>
+
     <v-footer app fixed class="transparent" style="height:auto;">
+      <v-menu v-model="locMenu" :close-on-content-click="false" offset-y top>
+        <template v-slot:activator="{ on }">
+          <v-btn class="time-btn" color="secondary" v-on="on"
+                 @click="prefillManual">
+            <v-icon left>mdi-map-marker</v-icon>
+            <span>
+              <div class="text-subtitle-2">{{ locLabel }}</div>
+              <div class="text-caption">{{ locCoordStr }}</div>
+            </span>
+          </v-btn>
+        </template>
+        <v-card width="320">
+          <v-list dense>
+            <v-list-item @click="useDeviceLocation">
+              <v-list-item-icon><v-icon>mdi-crosshairs-gps</v-icon></v-list-item-icon>
+              <v-list-item-content>
+                <v-list-item-title>{{ t('Use device location') }}</v-list-item-title>
+              </v-list-item-content>
+            </v-list-item>
+          </v-list>
+          <v-divider></v-divider>
+          <v-list dense style="max-height:240px; overflow-y:auto;">
+            <v-list-item v-for="c in cities" :key="c.name"
+                         @click="setLocation(c.name, c.lon, c.lat, c.elev)">
+              <v-list-item-content>
+                <v-list-item-title>{{ t(c.name) }}</v-list-item-title>
+                <v-list-item-subtitle>{{ fmtCoord(c.lat, c.lon) }}</v-list-item-subtitle>
+              </v-list-item-content>
+            </v-list-item>
+          </v-list>
+          <v-divider></v-divider>
+          <div style="display:flex; align-items:center; padding:8px;">
+            <v-text-field v-model="manualLon" :label="t('Lon (°)')" dense
+                          hide-details
+                          style="max-width:110px;" class="mr-2"></v-text-field>
+            <v-text-field v-model="manualLat" :label="t('Lat (°)')" dense
+                          hide-details
+                          style="max-width:110px;" class="mr-2"></v-text-field>
+            <v-btn small color="primary" @click="applyManual">
+              {{ t('Apply') }}
+            </v-btn>
+          </div>
+        </v-card>
+      </v-menu>
       <v-spacer></v-spacer>
-      <stel-button label="Constellations"
+      <stel-button :label="t('Constellations')"
                    img="static/imgs/symbols/btn-cst-lines.svg"
                    :obj="stel && stel.core.constellations"
-                   attr="lines_visible">
+                   attr="lines_visible" :also="['labels_visible']">
       </stel-button>
-      <stel-button label="Constellation Art"
+      <stel-button :label="t('Constellation Art')"
                    img="static/imgs/symbols/btn-cst-art.svg"
                    :obj="stel && stel.core.constellations"
                    attr="images_visible">
       </stel-button>
-      <stel-button label="Atmosphere"
+      <stel-button :label="t('Atmosphere')"
                    img="static/imgs/symbols/btn-atmosphere.svg"
                    :obj="stel && stel.core.atmosphere"
                    attr="visible">
       </stel-button>
-      <stel-button label="Landscape"
+      <stel-button :label="t('Landscape')"
                    img="static/imgs/symbols/btn-landscape.svg"
                    :obj="stel && stel.core.landscapes"
                    attr="visible">
       </stel-button>
-      <stel-button label="Azimuthal Grid"
+      <stel-button :label="t('Azimuthal Grid')"
                    img="static/imgs/symbols/btn-azimuthal-grid.svg"
                    :obj="stel && stel.core.lines.azimuthal"
                    attr="visible">
       </stel-button>
-      <stel-button label="Equatorial Grid"
+      <stel-button :label="t('Equatorial Grid')"
                    img="static/imgs/symbols/btn-equatorial-grid.svg"
                    :obj="stel && stel.core.lines.equatorial"
                    attr="visible">
       </stel-button>
-      <stel-button label="Deep Sky Objects"
+      <stel-button :label="t('Deep Sky Objects')"
                    img="static/imgs/symbols/btn-nebulae.svg"
                    :obj="stel && stel.core.dsos"
                    attr="visible">
       </stel-button>
-      <div class="stel-button shrink" :class="{'semi-transparent': !nightmode}"
-           style="width:5rem; height:5rem;">
-        <a @click="toggleNightMode">
-          <img src="static/imgs/symbols/btn-night-mode.svg" class="w-100 h-100"/>
+      <div class="stel-button" :class="{'semi-transparent': !nightmode}">
+        <a role="button" tabindex="0" :aria-label="t('Night Mode')"
+           @click="toggleNightMode"
+           @keydown.enter.prevent="toggleNightMode"
+           @keydown.space.prevent="toggleNightMode">
+          <img src="static/imgs/symbols/btn-night-mode.svg" alt=""/>
         </a>
+        <span class="stel-button-label" aria-hidden="true">{{ t('Night Mode') }}</span>
       </div>
-      <div class="stel-button shrink" :class="{'semi-transparent': !fsActive}"
-           style="width:5rem; height:5rem;">
-        <a @click="toggleFullscreen">
+      <div class="stel-button" :class="{'semi-transparent': !fsActive}">
+        <a role="button" tabindex="0"
+           :aria-label="fsActive ? t('Exit Full Screen') : t('Full Screen')"
+           @click="toggleFullscreen"
+           @keydown.enter.prevent="toggleFullscreen"
+           @keydown.space.prevent="toggleFullscreen">
           <img :src="fsActive ? 'static/imgs/symbols/fullscreen_exit.svg'
-                              : 'static/imgs/symbols/fullscreen.svg'"
-               class="w-100 h-100"/>
+                              : 'static/imgs/symbols/fullscreen.svg'" alt=""/>
         </a>
+        <span class="stel-button-label" aria-hidden="true">
+          {{ fsActive ? t('Exit Full Screen') : t('Full Screen') }}
+        </span>
       </div>
       <v-spacer></v-spacer>
       <div class="time-control">
@@ -269,10 +511,23 @@
               class="w-100 h-100">
       </canvas>
       <v-card v-if="stel && stel.core.selection"
-              style="position:absolute; top: 64px; width:430px;"
-              class="transparent">
+              style="position:absolute; top: 64px; width:430px;
+                     max-height: calc(100vh - 160px); overflow-y: auto;
+                     background: rgba(33, 33, 33, 0.72);">
         <v-card-title primary-title>
-          <h3>{{getTitle(stel.core.selection)}}</h3>
+          <div style="width: 100%">
+            <h3>{{getTitle(stel.core.selection)}}</h3>
+            <div class="sel-type">{{selType}}</div>
+            <div v-if="otherNames.length" class="sel-aka">
+              <span class="sel-aka-label">{{ t('Also known as') }}:</span>
+              <span v-for="n in shownOtherNames" :key="n"
+                    class="sel-aka-item">{{ n }}</span>
+              <span v-if="otherNames.length > 7" class="wi-toggle sel-aka-toggle"
+                    @click="akaExpanded = !akaExpanded">
+                {{ akaExpanded ? t('Show less') : '…' }}
+              </span>
+            </div>
+          </div>
         </v-card-title>
         <v-card-text>
           <v-layout row wrap class="w-100">
@@ -282,10 +537,52 @@
                 <span v-html="i.value"></span>
               </v-flex>
             </template>
+            <v-flex v-if="wikiIntro" xs12 class="sel-summary">
+              <div v-html="wikiIntro"></div>
+              <div v-if="wikiExpanded" v-html="wikiRest"></div>
+              <div v-if="wikiRest" class="wi-toggle"
+                   @click="wikiExpanded = !wikiExpanded">
+                {{ wikiExpanded ? t('Show less') : t('Show more') }}
+              </div>
+            </v-flex>
           </v-layout>
         </v-card-text>
       </v-card>
     </div>
+
+    <v-dialog v-model="planetsDialog" max-width="600">
+      <v-card class="secondary white--text" transparent>
+        <v-card-title><div class="text-h5">{{ t('Planets Visibility') }}</div></v-card-title>
+        <v-card-text>{{ t('Night from {0} to {1}',
+                          [nightFromStr, nightToStr]) }}</v-card-text>
+        <v-card-text>
+          <div class="pv-row">
+            <span class="pv-name"></span>
+            <span class="pv-time">{{ t('Rise') }}</span>
+            <span class="pv-time">{{ t('Set') }}</span>
+            <span class="pv-track pv-scale">
+              <span>12:00</span><span>18:00</span><span>00:00</span><span>06:00</span><span>12:00</span>
+            </span>
+          </div>
+          <div v-for="r in planetRows" :key="r.name" class="pv-row">
+            <span class="pv-name">{{ tName(r.name) }}</span>
+            <span class="pv-time">{{ fmtHM(r.rise) }}</span>
+            <span class="pv-time">{{ fmtHM(r.set) }}</span>
+            <span class="pv-track" :style="{background: planetSunBg}">
+              <i v-for="(b, i) in r.bars" :key="i" class="pv-bar"
+                 :style="{left: b.left + '%', width: b.width + '%'}"></i>
+            </span>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn class="blue--text darken-1" text
+                 @click="planetsDialog = false">{{ t('Close') }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-snackbar v-model="noticeOn" :timeout="2500" top>{{ notice }}</v-snackbar>
 
   </v-app>
 
@@ -293,23 +590,24 @@
 
 <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
-<script src="https://unpkg.com/i18next/dist/umd/i18next.min.js"></script>
-<script src="https://www.unpkg.com/i18next-xhr-backend/dist/umd/i18nextXHRBackend.min.js"></script>
 <script src="../../build/stellarium-web-engine.js"></script>
 
 <!-- Button component -->
 <script type="text/x-template" id="stel-button-template">
-  <div class="stel-button shrink" :class="{'semi-transparent': !value}"
-       style="width:5rem; height:5rem;">
-    <a v-on:click='clicked'>
-      <img :src="img" class="w-100 h-100"/>
+  <div class="stel-button" :class="{'semi-transparent': !value}">
+    <a role="button" tabindex="0" :aria-label="label"
+       v-on:click='clicked'
+       v-on:keydown.enter.prevent='clicked'
+       v-on:keydown.space.prevent='clicked'>
+      <img :src="img" alt=""/>
     </a>
+    <span class="stel-button-label" aria-hidden="true">{{ label }}</span>
   </div>
 </script>
 <script>
   Vue.component('stel-button', {
     template: '#stel-button-template',
-    props: ['label', 'img', 'obj', 'attr'],
+    props: ['label', 'img', 'obj', 'attr', 'also'],
     computed: {
       value: function() {
         return this.obj && this.obj[this.attr]
@@ -317,7 +615,11 @@
     },
     methods: {
       clicked: function() {
-        if (this.obj) this.obj[this.attr] = !this.obj[this.attr];
+        if (!this.obj) return;
+        var v = !this.obj[this.attr];
+        var that = this;
+        this.obj[this.attr] = v;
+        (this.also || []).forEach(function(a) { that.obj[a] = v; });
       }
     }
   })
@@ -325,17 +627,6 @@
 
 
 <script>
-
-  // Setup i18next for translations.
-  i18next.use(i18nextXHRBackend).init({
-    lng: 'en',
-    ns: ['gui', 'skyculture'],
-    debug: false,
-    backend: {
-      loadPath: 'https://stellarium.sfo2.cdn.digitaloceanspaces.com/' +
-                'i18n/v1/{{ns}}/{{lng}}.json'
-    }
-  });
 
   // Return the current page absolute base url.
   // Used because at the moment emscripten doesn't support relative url
@@ -363,11 +654,176 @@
   function mjdToDate(mjd) { return new Date((mjd - 40587) * 86400000); }
   function pad2(n) { return ('0' + n).slice(-2); }
 
+  // ?lat=..&lon=.. in the page URL picks the observer location on load.
+  function urlLocation() {
+    var q = new URLSearchParams(window.location.search);
+    var lat = parseFloat(q.get('lat'));
+    var lon = parseFloat(q.get('lon'));
+    if (isNaN(lat) || isNaN(lon)) return null;
+    if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+    return {lat: lat, lon: lon};
+  }
+
   // Altitude in degrees of a body as seen by a (cloned) observer.
   function bodyAltDeg(stel, obs, body) {
     var radec = body.getInfo('radec', obs);
     var observed = stel.convertFrame(obs, 'ICRF', 'OBSERVED', radec);
     return stel.anpm(stel.c2s(observed)[1]) * 180 / Math.PI;
+  }
+
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November',
+                'December'];
+
+  // Constellations as the engine knows them: IAU abbreviation -> [latin name,
+  // english name].  Objects are only reachable as 'NAME <abbreviation>', while
+  // labels are translated from the english name, so both forms are needed to
+  // map the latin names used as keys in the name dictionaries.
+  var CSTS = {
+    And: ['Andromeda', 'Chained Maiden'],
+    Ant: ['Antlia', 'Air Pump'],
+    Aps: ['Apus', 'Bird of Paradise'],
+    Aqr: ['Aquarius', 'Water Bearer'],
+    Aql: ['Aquila', 'Eagle'],
+    Ara: ['Ara', 'Altar'],
+    Ari: ['Aries', 'Ram'],
+    Aur: ['Auriga', 'Charioteer'],
+    Boo: ['Bootes', 'Herdsman'],
+    Cae: ['Caelum', 'Engraving Tool'],
+    Cam: ['Camelopardalis', 'Giraffe'],
+    Cnc: ['Cancer', 'Crab'],
+    Cvn: ['Canes Venatici', 'Hunting Dogs'],
+    CMa: ['Canis Major', 'Great Dog'],
+    CMi: ['Canis Minor', 'Lesser Dog'],
+    Cap: ['Capricornus', 'Sea Goat'],
+    Car: ['Carina', 'Keel'],
+    Cas: ['Cassiopeia', 'Seated Queen'],
+    Cen: ['Centaurus', 'Centaur'],
+    Cep: ['Cepheus', 'King'],
+    Cet: ['Cetus', 'Sea Monster'],
+    Cha: ['Chamaeleon', 'Chameleon'],
+    Cir: ['Circinus', 'Compass'],
+    Col: ['Columba', 'Dove'],
+    Com: ['Coma Berenices', "Bernice's Hair"],
+    CrA: ['Corona Australis', 'Southern Crown'],
+    CrB: ['Corona Borealis', 'Northern Crown'],
+    Crv: ['Corvus', 'Crow'],
+    Crt: ['Crater', 'Cup'],
+    Cru: ['Crux', 'Southern Cross'],
+    Cyg: ['Cygnus', 'Swan'],
+    Del: ['Delphinus', 'Dolphin'],
+    Dor: ['Dorado', 'Swordfish'],
+    Dra: ['Draco', 'Dragon'],
+    Equ: ['Equuleus', 'Little Horse'],
+    Eri: ['Eridanus', 'River'],
+    For: ['Fornax', 'Furnace'],
+    Gem: ['Gemini', 'Twins'],
+    Gru: ['Grus', 'Crane'],
+    Her: ['Hercules', 'Hercules'],
+    Hor: ['Horologium', 'Clock'],
+    Hya: ['Hydra', 'Female Water Snake'],
+    Hyi: ['Hydrus', 'Male Water Snake'],
+    Ind: ['Indus', 'Indian'],
+    Lac: ['Lacerta', 'Lizard'],
+    Leo: ['Leo', 'Lion'],
+    LMi: ['Leo Minor', 'Lesser Lion'],
+    Lep: ['Lepus', 'Hare'],
+    Lib: ['Libra', 'Scales'],
+    Lup: ['Lupus', 'Wolf'],
+    Lyn: ['Lynx', 'Lynx'],
+    Lyr: ['Lyra', 'Lyre'],
+    Men: ['Mensa', 'Table Mountain'],
+    Mic: ['Microscopium', 'Microscope'],
+    Mon: ['Monoceros', 'Unicorn'],
+    Mus: ['Musca', 'Fly'],
+    Nor: ['Norma', "Carpenter's Square"],
+    Oct: ['Octans', 'Octant'],
+    Oph: ['Ophiuchus', 'Serpent Bearer'],
+    Ori: ['Orion', 'Hunter'],
+    Pav: ['Pavo', 'Peacock'],
+    Peg: ['Pegasus', 'Winged Horse'],
+    Per: ['Perseus', 'Hero'],
+    Phe: ['Phoenix', 'Phoenix'],
+    Pic: ['Pictor', "Painter's Easel"],
+    Psc: ['Pisces', 'Fishes'],
+    PsA: ['Piscis Austrinus', 'Southern Fish'],
+    Pup: ['Puppis', 'Stern'],
+    Pyx: ['Pyxis', 'Compass'],
+    Ret: ['Reticulum', 'Reticle'],
+    Sge: ['Sagitta', 'Arrow'],
+    Sgr: ['Sagittarius', 'Archer'],
+    Sco: ['Scorpius', 'Scorpion'],
+    Scl: ['Sculptor', 'Sculptor'],
+    Sct: ['Scutum', 'Shield'],
+    Ser: ['Serpens', 'Serpent'],
+    Sex: ['Sextans', 'Sextant'],
+    Tau: ['Taurus', 'Bull'],
+    Tel: ['Telescopium', 'Telescope'],
+    Tri: ['Triangulum', 'Triangle'],
+    Tra: ['Triangulum Australe', 'Southern Triangle'],
+    Tuc: ['Tucana', 'Toucan'],
+    UMa: ['Ursa Major', 'Great Bear'],
+    UMi: ['Ursa Minor', 'Little Bear'],
+    Vel: ['Vela', 'Sails'],
+    Vir: ['Virgo', 'Maiden'],
+    Vol: ['Volans', 'Flying Fish'],
+    Vul: ['Vulpecula', 'Fox']
+  };
+  var CST_ABBR = {};      // latin name -> abbreviation
+  var CST_LATIN = {};     // english name -> latin name
+  var CST_FROM_ABBR = {}; // abbreviation -> latin name
+  (function() {
+    for (var abbr in CSTS) {
+      CST_ABBR[CSTS[abbr][0]] = abbr;
+      CST_LATIN[CSTS[abbr][1]] = CSTS[abbr][0];
+      CST_FROM_ABBR[abbr] = CSTS[abbr][0];
+    }
+  })();
+
+  // Queries are matched without case or spaces, as the official frontend does.
+  function normName(s) {
+    return s.toLowerCase().replace(/\s+/g, '');
+  }
+
+  var GALAXY_MORPHO = {
+    E: 'Elliptical', SB: 'Barred Spiral', SAB: 'Intermediate Spiral',
+    SA: 'Spiral', S0: 'Lenticular', S: 'Spiral', Im: 'Irregular',
+    dSph: 'Dwarf Spheroidal', dE: 'Dwarf Elliptical'
+  };
+
+  function galaxyMorphoName(morpho) {
+    for (var k in GALAXY_MORPHO) {
+      if (morpho.indexOf(k) === 0) return GALAXY_MORPHO[k];
+    }
+    return '';
+  }
+
+  // Position on the noon-to-noon axis of the night window, in percent.
+  function nightPercent(d) {
+    var h = d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
+    return (h >= 12 ? (h - 12) : (h + 12)) / 24 * 100;
+  }
+
+  // Segments of the night axis during which a body is above the horizon.  A
+  // missing rise or set time means it stays up across that end of the window.
+  function visibilityBars(rise, set, alwaysUp) {
+    if (rise === null && set === null) {
+      return alwaysUp ? [{left: 0, width: 100}] : [];
+    }
+    var r = rise === null ? 0 : nightPercent(rise);
+    var s = set === null ? 100 : nightPercent(set);
+    if (set === null || rise === null || s > r) {
+      return [{left: r, width: s - r}];
+    }
+    var bars = [];
+    if (s > 0) bars.push({left: 0, width: s});
+    if (r < 100) bars.push({left: r, width: 100 - r});
+    return bars;
+  }
+
+  // The engine reports event times as TT modified julian dates.
+  function ttMjdToDate(mjd, ttOffset) {
+    return (mjd === null || mjd === undefined) ? null : mjdToDate(mjd - ttOffset);
   }
 
   // Kept outside Vue reactivity: the day-slider gradient only depends on the
@@ -390,12 +846,109 @@
       fullscreen: false,
       pseudoFs: false,
       stelReady: false,
+      locMenu: false,
+      locName: '',
+      planetsDialog: false,
+      wikiIntro: '',
+      wikiRest: '',
+      wikiExpanded: false,
+      akaExpanded: false,
+      lang: localStorage.getItem('sw-lang') || 'en',
+      uiDict: {},
+      nameDict: {},
+      searchIndex: [],
+      searchText: '',
+      searchMenu: false,
+      notice: '',
+      noticeOn: false,
+      langs: [
+        {code: 'en', name: 'English'},
+        {code: 'zhs', name: '简体中文'},
+        {code: 'zht', name: '繁體中文'},
+        {code: 'ja', name: '日本語'}
+      ],
+      manualLon: '',
+      manualLat: '',
+      viewSettings: [
+        {label: 'Milky Way', path: 'milkyway.visible'},
+        {label: 'Meridian Line', path: 'lines.meridian.visible'},
+        {label: 'Ecliptic Line', path: 'lines.ecliptic.visible'},
+        {label: 'Constellation Boundaries',
+         path: 'constellations.bounds_visible'},
+        {label: 'Cardinal Points', path: 'cardinals.visible'}
+      ],
+      cities: [
+        {name: 'Beijing', lon: 116.41, lat: 39.90, elev: 44},
+        {name: 'Shanghai', lon: 121.47, lat: 31.23, elev: 4},
+        {name: 'Guangzhou', lon: 113.26, lat: 23.13, elev: 21},
+        {name: 'Chengdu', lon: 104.07, lat: 30.57, elev: 500},
+        {name: 'Lhasa', lon: 91.11, lat: 29.65, elev: 3650},
+        {name: 'Urumqi', lon: 87.62, lat: 43.83, elev: 918},
+        {name: 'Tokyo', lon: 139.69, lat: 35.69, elev: 40},
+        {name: 'London', lon: -0.13, lat: 51.51, elev: 11},
+        {name: 'New York', lon: -74.01, lat: 40.71, elev: 10},
+        {name: 'Sydney', lon: 151.21, lat: -33.87, elev: 58},
+        {name: 'Reykjavik', lon: -21.94, lat: 64.15, elev: 61},
+        {name: 'Atacama', lon: -69.00, lat: -24.60, elev: 2400}
+      ],
       dateFields: [{unit: 'years'}, {unit: 'months'}, {unit: 'days'}],
       timeFields: [{unit: 'hours'}, {unit: 'minutes'}, {unit: 'seconds'}]
     },
     computed: {
       fsActive: function() {
         return this.fullscreen || this.pseudoFs;
+      },
+      selId: function() {
+        var o = this.stel && this.stel.core.selection;
+        return o ? o.id : '';
+      },
+      // Other designations and translated aliases of the selected object.
+      otherNames: function() {
+        var o = this.stel && this.stel.core.selection;
+        if (!o) return [];
+        var title = this.getTitle(o);
+        var seen = {};
+        var out = [];
+        var add = function(s) {
+          s = (s || '').trim();
+          if (!s || s === title || seen[s]) return;
+          seen[s] = true;
+          out.push(s);
+        };
+        var dsgns = o.designations();
+        for (var i = 0; i < dsgns.length; i++) {
+          if (dsgns[i].indexOf('CON ') === 0) continue;
+          add(this.stel.designationCleanup(dsgns[i], 26));
+        }
+        var key = this.wikiKeyFor(o);
+        if (key) this.nameAliases(key).forEach(add);
+        return out;
+      },
+      shownOtherNames: function() {
+        return this.akaExpanded ? this.otherNames
+                                : this.otherNames.slice(0, 7);
+      },
+      selType: function() {
+        var o = this.stel && this.stel.core.selection;
+        if (!o) return '';
+        var jd = o.jsonData || {};
+        var morpho = '';
+        if (jd.model_data && jd.model_data.morpho) {
+          morpho = galaxyMorphoName(jd.model_data.morpho);
+          if (morpho) morpho = this.t(morpho) + ' ';
+        }
+        var code = (jd.types || [])[0];
+        var name = code ? this.stel.otypeToStr(code) : '';
+        return morpho + this.t(name || 'Unknown Type');
+      },
+      locCoordStr: function() {
+        if (!this.stel) return '';
+        var obs = this.stel.core.observer;
+        return this.fmtCoord(obs.latitude * 180 / Math.PI,
+                             obs.longitude * 180 / Math.PI);
+      },
+      locLabel: function() {
+        return this.t(this.locName || 'Observer');
       },
       simDate: function() {
         return this.simMjd === null ? new Date() : mjdToDate(this.simMjd);
@@ -411,7 +964,8 @@
                pad2(d.getDate());
       },
       speedLabel: function() {
-        return this.paused ? 'paused' : SPEEDS[this.speedIdx].label;
+        return this.paused ? this.t('paused')
+                           : this.t(SPEEDS[this.speedIdx].label);
       },
       // The 24h window the day slider spans: noon-to-noon, so the whole night
       // is contiguous on the track.
@@ -478,13 +1032,108 @@
         if (!stops.length) return '';
         var s = stops[Math.floor(this.timeMinute * stops.length / 1440)];
         if (!s) return '';
-        if (s.sunAlt > 0) return 'Daylight';
-        if (s.sunAlt < -16) return s.moonAlt < 5 ? 'Dark night' : 'Moonlight';
-        return this.timeMinute > 720 ? 'Dawn' : 'Twilight';
+        if (s.sunAlt > 0) return this.t('Daylight');
+        if (s.sunAlt < -16) {
+          return s.moonAlt < 5 ? this.t('Dark night') : this.t('Moonlight');
+        }
+        return this.timeMinute > 720 ? this.t('Dawn') : this.t('Twilight');
+      },
+      searchResults: function() {
+        var q = normName(this.searchText || '');
+        if (!q) return [];
+        var that = this;
+        var out = [];
+        var seen = {};
+        var push = function(e) {
+          if (seen[e.key]) return;
+          seen[e.key] = true;
+          var label = that.tName(e.key);
+          out.push({
+            label: label,
+            sub: normName(e.alias) === normName(label) ? '' : e.alias,
+            key: e.key
+          });
+        };
+        var i, e;
+        // Prefix matches first, then the rest.
+        for (i = 0; i < this.searchIndex.length && out.length < 8; i++) {
+          e = this.searchIndex[i];
+          if (e.n.indexOf(q) === 0) push(e);
+        }
+        for (i = 0; i < this.searchIndex.length && out.length < 8; i++) {
+          e = this.searchIndex[i];
+          if (e.n.indexOf(q) > 0) push(e);
+        }
+        var dsgn = this.dsgnQuery(this.searchText);
+        if (dsgn) out.unshift({label: dsgn, sub: '', key: null, dsgn: dsgn});
+        return out.slice(0, 8);
+      },
+      nightFromStr: function() {
+        return this.monthDay(this.sliderStart);
+      },
+      nightToStr: function() {
+        return this.monthDay(new Date(this.sliderStartKey + 86400000));
+      },
+      // Day/night gradient behind the visibility bars.  locCoordStr is read so
+      // that the gradient is recomputed when the observer moves.
+      planetSunBg: function() {
+        if (!this.stelReady) return 'none';
+        var stel = STEL;
+        var base = this.sliderStartKey;
+        var loc = this.locCoordStr;
+        var obs = stel.core.observer.clone();
+        var sun = stel.getObj('NAME Sun');
+        var stops = [];
+        for (var i = 0; i < 25; i++) {
+          obs.utc = dateToMjd(new Date(base + i * 3600000));
+          var b = (bodyAltDeg(stel, obs, sun) + 12) / 12;
+          b = b > 1 ? 1 : (b < 0 ? 0 : b);
+          stops.push('rgb(' + Math.round(53 * b) + ',' + Math.round(173 * b) +
+                     ',' + Math.round(211 * b) + ') ' +
+                     Math.round(i / 24 * 100) + '%');
+        }
+        obs.destroy();
+        return 'linear-gradient(to right,' + stops.join(',') + ')';
+      },
+      planetRows: function() {
+        if (!this.stelReady || !this.planetsDialog) return [];
+        var stel = STEL;
+        // Read so the rows are recomputed when the observer moves.
+        var loc = this.locCoordStr;
+        var obs = stel.core.observer;
+        var ttOffset = obs.tt - obs.utc;
+        var startMjd = dateToMjd(this.sliderStart) + ttOffset;
+        var names = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter',
+                     'Saturn'];
+        var rows = [];
+        for (var i = 0; i < names.length; i++) {
+          var obj = stel.getObj('NAME ' + names[i]);
+          if (!obj) continue;
+          var vis = obj.computeVisibility({obs: obs, startTime: startMjd,
+                                           endTime: startMjd + 1})[0] || {};
+          var rise = ttMjdToDate(vis.rise, ttOffset);
+          var set = ttMjdToDate(vis.set, ttOffset);
+          var alwaysUp = false;
+          if (rise === null && set === null) {
+            alwaysUp = bodyAltDeg(stel, obs, obj) > 0;
+          }
+          rows.push({
+            name: names[i],
+            rise: rise,
+            set: set,
+            bars: visibilityBars(rise, set, alwaysUp)
+          });
+        }
+        return rows;
       }
+    },
+    watch: {
+      selId: function() { this.akaExpanded = false; this.fetchWiki(); },
+      searchText: function(v) { this.searchMenu = !!v; }
     },
     mounted: function() {
       var that = this;
+      that.loadLang(that.lang);
       var syncFullscreen = function() {
         that.fullscreen = !!(document.fullscreenElement ||
                              document.webkitFullscreenElement);
@@ -492,6 +1141,9 @@
       };
       document.addEventListener('fullscreenchange', syncFullscreen);
       document.addEventListener('webkitfullscreenchange', syncFullscreen);
+      var onFullscreenError = function() { that.setPseudoFs(true); };
+      document.addEventListener('fullscreenerror', onFullscreenError);
+      document.addEventListener('webkitfullscreenerror', onFullscreenError);
       document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && that.pseudoFs) that.setPseudoFs(false);
       });
@@ -499,13 +1151,20 @@
         wasmFile: '../../build/stellarium-web-engine.wasm',
         canvas: document.getElementById('stel-canvas'),
         translateFn: function(domain, str) {
-          return i18next.t(str, {ns: domain});
+          if (domain === 'sky' || domain === 'skyculture') {
+            // Constellation labels are translated from their english name,
+            // while the dictionaries are keyed by the latin name.
+            return that.tName(CST_LATIN[str] || str);
+          }
+          return that.t(str);
         },
         onReady: function(stel) {
           that.stel = stel;
           STEL = stel;
           that.stelReady = true;
           that.simMjd = stel.core.observer.utc;
+          var urlLoc = urlLocation();
+          if (urlLoc) that.setLocation('', urlLoc.lon, urlLoc.lat);
           setInterval(function() {
             that.simMjd = stel.core.observer.utc;
           }, 200);
@@ -525,6 +1184,10 @@
           core.comets.addDataSource({ url: baseUrl + 'CometEls.txt', key: 'mpc_comets' })
           core.satellites.addDataSource({ url: baseUrl + 'tle_satellite.jsonl.gz', key: 'jsonl/sat' })
 
+          // Names and lines follow the same toggle, for every constellation
+          // above the horizon instead of only the pointed one.
+          core.constellations.show_only_pointed = false
+
           // Force ui update when there is any change.
           stel.change(function(obj, attr) {
             if (attr !== "hovered") {
@@ -532,12 +1195,164 @@
             }
           })
 
-          stel.setFont('regular', 'static/fonts/Roboto-Regular.ttf', 1.38);
-          stel.setFont('bold', 'static/fonts/Roboto-Bold.ttf', 1.38);
+          // Roboto first, then a CJK subset as glyph fallback so translated
+          // sky labels render instead of missing-glyph boxes.
+          stel.setFont('regular', 'static/fonts/Roboto-Regular.ttf', 1.38)
+            .then(function() {
+              return stel.setFont('regular',
+                                  'static/fonts/NotoSansSC-Regular.ttf');
+            });
+          stel.setFont('bold', 'static/fonts/Roboto-Bold.ttf', 1.38)
+            .then(function() {
+              return stel.setFont('bold', 'static/fonts/NotoSansSC-Bold.ttf');
+            });
         }
       })
     },
     methods: {
+
+      // UI string lookup; the English text is the key, so a missing or empty
+      // translation falls back to English.
+      t: function(key, args) {
+        var s = this.uiDict[key] || key;
+        if (args) {
+          for (var i = 0; i < args.length; i++) {
+            s = s.replace('{' + i + '}', args[i]);
+          }
+        }
+        return s;
+      },
+
+      tName: function(key) {
+        var v = this.nameDict[key];
+        if (Object.prototype.toString.call(v) === '[object Array]') {
+          for (var i = 0; i < v.length; i++) if (v[i]) return v[i];
+          return key;
+        }
+        return v || key;
+      },
+
+      // Every non-empty alias of a name in the current language.
+      nameAliases: function(key) {
+        var v = this.nameDict[key];
+        if (Object.prototype.toString.call(v) === '[object Array]') {
+          return v.filter(function(s) { return s; });
+        }
+        return v ? [v] : [];
+      },
+
+      // Reverse index used by the search field: normalized alias -> object key.
+      // The English key itself always stays searchable, whatever the language.
+      buildSearchIndex: function() {
+        var entries = [];
+        var add = function(alias, key) {
+          if (alias) entries.push({n: normName(alias), alias: alias, key: key});
+        };
+        for (var key in this.nameDict) {
+          add(key, key);
+          var aliases = this.nameAliases(key);
+          for (var i = 0; i < aliases.length; i++) add(aliases[i], key);
+          if (CSTS[CST_ABBR[key]]) add(CSTS[CST_ABBR[key]][1], key);
+        }
+        this.searchIndex = entries;
+      },
+
+      monthDay: function(d) {
+        return this.t('{0} {1}',
+                      [this.t(MONTHS[d.getMonth()]), d.getDate()]);
+      },
+
+      // Catalog designations, normalized to the form the engine expects
+      // ('M31' -> 'M 31').  Empty when the text is not a designation.
+      dsgnQuery: function(text) {
+        var m = (text || '').trim().match(/^(M|NGC|IC|HIP|HD)\s*(\d+)$/i);
+        return m ? m[1].toUpperCase() + ' ' + m[2] : '';
+      },
+
+      // Look up the engine object a name dictionary key refers to.
+      resolveName: function(key) {
+        var abbr = CST_ABBR[key];
+        if (abbr) return this.stel.getObj('NAME ' + abbr);
+        return this.stel.getObj('NAME ' + key) || this.stel.getObj(key);
+      },
+
+      pickSearch: function(item) {
+        this.searchText = '';
+        if (!item || !this.stel) return;
+        var obj = this.searchObj(item);
+        if (obj) return this.selectObj(obj);
+        this.searchEverywhere(item);
+      },
+
+      searchObj: function(item) {
+        return item.dsgn ? this.stel.getObj(item.dsgn)
+                         : this.resolveName(item.key);
+      },
+
+      // Sky data is streamed for the visible area only, so an object outside
+      // of the view may not exist yet.  Zoom out to force a full sky load and
+      // retry for a few seconds before giving up.
+      searchEverywhere: function(item) {
+        var that = this;
+        var stel = this.stel;
+        var fov = stel.core.fov;
+        stel.core.fov = Math.PI * 0.999;
+        var tries = 0;
+        var tick = function() {
+          var obj = that.searchObj(item);
+          if (obj) {
+            stel.core.fov = fov;
+            that.selectObj(obj);
+            return;
+          }
+          if (++tries > 60) {
+            stel.core.fov = fov;
+            that.notice = that.t('Not found');
+            that.noticeOn = true;
+            return;
+          }
+          setTimeout(tick, 50);
+        };
+        setTimeout(tick, 50);
+      },
+
+      selectObj: function(obj) {
+        this.stel.core.selection = obj;
+        this.stel.pointAndLock(obj, 0.5);
+      },
+
+      searchFirst: function() {
+        var items = this.searchResults;
+        if (items.length) return this.pickSearch(items[0]);
+        var q = (this.searchText || '').trim();
+        if (q && this.stel && this.stel.getObj(q)) this.pickSearch({dsgn: q});
+      },
+
+      setLang: function(code) {
+        this.lang = code;
+        localStorage.setItem('sw-lang', code);
+        this.loadLang(code);
+      },
+
+      loadLang: function(code) {
+        var that = this;
+        var base = getBaseUrl() + '../../appsource/' + code + '/';
+        ['ui', 'names'].forEach(function(kind) {
+          fetch(base + kind + '.json')
+            .then(function(r) { return r.ok ? r.json() : {}; })
+            .then(function(d) {
+              if (that.lang !== code) return;
+              if (kind === 'ui') that.uiDict = d || {};
+              else {
+                that.nameDict = d || {};
+                that.buildSearchIndex();
+              }
+              // Drop the engine cache of already translated labels.
+              if (STEL) STEL.translationsCache = {};
+            })
+            .catch(function() {});
+        });
+      },
 
       part: function(unit) {
         var d = this.simDate;
@@ -610,12 +1425,19 @@
           this.setPseudoFs(true);
           return;
         }
+        var settled = false;
         var p = request.call(doc.documentElement);
-        if (p && p.catch) {
-          // Denied (e.g. iframe without allow=fullscreen): hide the chrome
-          // instead so the button always has a visible effect.
-          p.catch(function() { that.setPseudoFs(true); });
+        if (p && p.then) {
+          p.then(function() { settled = true; },
+                 function() { settled = true; that.setPseudoFs(true); });
         }
+        // Some embedded webviews return a promise that never settles instead
+        // of rejecting, so also fall back on a timeout.
+        setTimeout(function() {
+          if (settled) return;
+          if (doc.fullscreenElement || doc.webkitFullscreenElement) return;
+          that.setPseudoFs(true);
+        }, 400);
       },
 
       setPseudoFs: function(on) {
@@ -623,10 +1445,81 @@
         document.body.classList.toggle('pseudo-fs', on);
       },
 
+      fmtHM: function(d) {
+        if (!d) return '--:--';
+        return pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+      },
+
+      fmtCoord: function(lat, lon) {
+        return Math.abs(lat).toFixed(2) + '°' + (lat >= 0 ? 'N' : 'S') +
+               ', ' + Math.abs(lon).toFixed(2) + '°' + (lon >= 0 ? 'E' : 'W');
+      },
+
+      setLocation: function(name, lon, lat, elev) {
+        var obs = this.stel.core.observer;
+        obs.longitude = lon * Math.PI / 180;
+        obs.latitude = lat * Math.PI / 180;
+        if (elev !== undefined) obs.elevation = elev;
+        this.locName = name;
+        this.locMenu = false;
+      },
+
+      useDeviceLocation: function() {
+        var that = this;
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(function(pos) {
+          that.setLocation('My location', pos.coords.longitude,
+                           pos.coords.latitude, pos.coords.altitude || 0);
+        }, function() { that.locMenu = false; });
+      },
+
+      prefillManual: function() {
+        var obs = this.stel && this.stel.core.observer;
+        if (!obs) return;
+        this.manualLon = (obs.longitude * 180 / Math.PI).toFixed(2);
+        this.manualLat = (obs.latitude * 180 / Math.PI).toFixed(2);
+      },
+
+      applyManual: function() {
+        var lon = parseFloat(this.manualLon);
+        var lat = parseFloat(this.manualLat);
+        if (isNaN(lon) || isNaN(lat)) return;
+        this.setLocation('', lon, lat);
+      },
+
+      getAttr: function(path) {
+        var o = this.stel && this.stel.core;
+        var parts = path.split('.');
+        for (var i = 0; i < parts.length; i++) {
+          if (o === undefined || o === null) return false;
+          o = o[parts[i]];
+        }
+        return !!o;
+      },
+
+      setAttr: function(path, v) {
+        var o = this.stel.core;
+        var parts = path.split('.');
+        for (var i = 0; i < parts.length - 1; i++) o = o[parts[i]];
+        o[parts[parts.length - 1]] = v;
+      },
+
       getTitle: function(obj) {
-        var name = obj.designations()[0];
-        name = name.replace(/^NAME /, '');
-        return name;
+        var dsgns = obj.designations();
+        var name = dsgns[0];
+        // Catalog numbers often come first (M 51); prefer a proper name so it
+        // can be translated.
+        for (var i = 0; i < dsgns.length; i++) {
+          if (dsgns[i].indexOf('NAME ') === 0) { name = dsgns[i]; break; }
+        }
+        // Constellations are designated by their IAU abbreviation.
+        if (obj.jsonData && obj.jsonData.model === 'constellation') {
+          return this.tName(CST_FROM_ABBR[name.replace(/^NAME /, '')] || name);
+        }
+        // 20 = BAYER_CONST_SHORT | DSGN_TRANSLATE: greek letter designations
+        // such as 'ζ UMa'.  The engine only translates 'NAME …' designations,
+        // so star proper names are looked up in the dictionary again here.
+        return this.tName(this.stel.designationCleanup(name, 20));
       },
 
       getProgress: function() {
@@ -677,6 +1570,30 @@
 
         var ret = [];
         var obs = stel.core.observer;
+        var jd = obj.jsonData || {};
+        var md = jd.model_data || {};
+        var vmag = obj.getInfo('vmag');
+        ret.push({
+          key: this.t('Magnitude'),
+          value: vmag === undefined || isNaN(vmag) ? this.t('Unknown')
+                                               : vmag.toFixed(2)
+        });
+        var dist = obj.getInfo('distance');
+        if (dist && !isNaN(dist)) {
+          ret.push({key: this.t('Distance'), value: this.formatDistance(dist)});
+        }
+        if (md.radius) {
+          ret.push({key: this.t('Radius'), value: md.radius + ' Km'});
+        }
+        if (md.spect_t) {
+          ret.push({key: this.t('Spectral Type'), value: md.spect_t});
+        }
+        if (md.dimx) {
+          var dimy = md.dimy || md.dimx;
+          ret.push({key: this.t('Size'),
+                    value: (+md.dimx).toFixed(1) + "' x " +
+                           (+dimy).toFixed(1) + "'"});
+        }
         var cirs = stel.convertFrame(obs, 'ICRF', 'CIRS', obj.getInfo('radec'));
         var radec = stel.c2s(cirs);
         var ra = stel.anp(radec[0]);
@@ -684,21 +1601,108 @@
         var observed = stel.convertFrame(obs, 'CIRS', 'OBSERVED', cirs);
         var azalt = stel.c2s(observed);
         var az = stel.anp(azalt[0]);
-        var alt = stel.anp(azalt[1]);
-        var vmag = obj.getInfo('vmag');
+        var alt = stel.anpm(azalt[1]);
         ret.push({
-          key: 'Magnitude',
-          value: vmag === undefined ? 'Unknown' : vmag.toFixed(2)
-        });
-        ret.push({
-          key: 'Ra/Dec',
+          key: this.t('Ra/Dec'),
           value: formatRA(ra) + '&nbsp;&nbsp;&nbsp;' + formatDec(dec)
         });
         ret.push({
-          key: 'Az/Alt',
+          key: this.t('Az/Alt'),
           value: formatAz(az) + '&nbsp;&nbsp;&nbsp;' + formatDec(alt)
-        })
+        });
+        var phase = obj.getInfo('phase');
+        if (phase && !isNaN(phase)) {
+          ret.push({key: this.t('Phase'), value: (phase * 100).toFixed(0) + '%'});
+        }
+        var vis = obj.computeVisibility();
+        var vstr;
+        if (!vis.length) {
+          vstr = this.t('Not visible tonight');
+        } else if (vis[0].rise === null) {
+          vstr = this.t('Always visible tonight');
+        } else {
+          vstr = this.t('Rise') + ': ' + this.fmtHM(mjdToDate(vis[0].rise)) +
+                 '&nbsp;&nbsp;&nbsp; ' + this.t('Set') + ': ' +
+                 (vis[0].set === null ? '--:--'
+                                      : this.fmtHM(mjdToDate(vis[0].set)));
+        }
+        ret.push({key: this.t('Visibility'), value: vstr});
         return ret;
+      },
+
+      formatDistance: function(d) {
+        // d is in AU.
+        var ly = d * 499.004782 / 86400 / 365.25;
+        if (ly >= 0.1) {
+          return ly.toFixed(2) + '<span class="radecUnit"> light years</span>';
+        }
+        if (d >= 0.1) return d.toFixed(2) + '<span class="radecUnit"> AU</span>';
+        var meter = d * 149597870000;
+        if (meter >= 1000) {
+          return (meter / 1000).toFixed(2) + '<span class="radecUnit"> km</span>';
+        }
+        return meter.toFixed(2) + '<span class="radecUnit"> m</span>';
+      },
+
+      // Object summary text comes from the per-language article files in
+      // appsource/<lang>/wiki/, keyed like names.json / wikipedia.json.
+      fetchWiki: function() {
+        var that = this;
+        this.wikiIntro = '';
+        this.wikiRest = '';
+        this.wikiExpanded = false;
+        var obj = this.stel && this.stel.core.selection;
+        if (!obj) return;
+        var id = obj.id;
+        var key = this.wikiKeyFor(obj);
+        if (!key) return;
+        // Double-encode: the server decodes the path once, so the request
+        // must carry the percent-escaped file name itself.
+        fetch(getBaseUrl() + '../../appsource/' + this.lang + '/wiki/' +
+              encodeURIComponent(encodeURIComponent(key) + '.html'))
+          .then(function(r) { return r.ok ? r.text() : ''; })
+          .then(function(text) {
+            var cur = that.stel && that.stel.core.selection;
+            if (!cur || cur.id !== id || !text) return;
+            // DOMParser reads the stored markup without executing any of it.
+            var doc = new DOMParser().parseFromString(text, 'text/html');
+            var intro = doc.querySelector('.wi-intro');
+            var rest = doc.querySelector('.wi-rest');
+            that.wikiIntro = intro ? intro.innerHTML.trim() : '';
+            that.wikiRest = rest && rest.innerHTML.trim() ?
+                            rest.innerHTML.trim() : '';
+          })
+          .catch(function() {});
+      },
+
+      // The dataset key (English name shared by names.json and
+      // wikipedia.json) of the selected object, or null when it has none.
+      wikiKeyFor: function(obj) {
+        if (obj.jsonData && obj.jsonData.model === 'constellation') {
+          var d0 = obj.designations()[0] || '';
+          var m0 = d0.match(/^(?:CON \S+|NAME) (\S+)$/);
+          return CST_FROM_ABBR[m0 ? m0[1] : d0] || null;
+        }
+        var dsgns = obj.designations();
+        var cands = [];
+        for (var i = 0; i < dsgns.length; i++) {
+          var d = dsgns[i];
+          cands.push(d.replace(/^NAME /, ''));
+          cands.push(this.stel.designationCleanup(d, 8));
+          cands.push(this.stel.designationCleanup(d, 4));
+          cands.push(this.stel.designationCleanup(d, 0));
+        }
+        cands.push(this.getTitle(obj));
+        for (i = 0; i < cands.length; i++) {
+          if (cands[i] &&
+              Object.prototype.hasOwnProperty.call(this.nameDict, cands[i]))
+            return cands[i];
+        }
+        var n = normName(this.getTitle(obj));
+        for (i = 0; i < this.searchIndex.length; i++) {
+          if (this.searchIndex[i].n === n) return this.searchIndex[i].key;
+        }
+        return null;
       }
     }
   })

@@ -27,6 +27,7 @@ typedef struct {
     obj_t   obj;
     uint64_t gaia;  // Gaia source id (0 if none)
     int     hip;    // HIP number.
+    int     hd;     // HD number.
     float   vmag;
     float   plx;    // Parallax (arcsec) (Note: could be computed from pvo).
     float   bv;
@@ -417,6 +418,14 @@ void star_get_designations(
         f(obj, user, NULL, names);
         names += strlen(names) + 1;
     }
+    if (star->hip) {
+        snprintf(buf, sizeof(buf), "%d", star->hip);
+        f(obj, user, "HIP", buf);
+    }
+    if (star->hd) {
+        snprintf(buf, sizeof(buf), "%d", star->hd);
+        f(obj, user, "HD", buf);
+    }
     if (star->gaia) {
         snprintf(buf, sizeof(buf), "%" PRId64, star->gaia);
         f(obj, user, "GAIA", buf);
@@ -470,6 +479,7 @@ static int on_file_tile_loaded(const char type[4],
         {"type", 's', .size=4},
         {"gaia", 'Q'},
         {"hip",  'i'},
+        {"hd",   'i'},
         {"vmag", 'f', EPH_VMAG},
         {"gmag", 'f', EPH_VMAG},
         {"ra",   'f', EPH_RAD},
@@ -517,7 +527,7 @@ static int on_file_tile_loaded(const char type[4],
         s->obj.klass = &star_klass;
         eph_read_table_row(
                 table_data, size, &data_ofs, ARRAY_SIZE(columns), columns,
-                s->obj.type, &s->gaia, &s->hip, &vmag, &gmag,
+                s->obj.type, &s->gaia, &s->hip, &s->hd, &vmag, &gmag,
                 &ra, &de, &plx, &pra, &pde, &epoch, &bv, ids, sp_type);
         assert(!isnan(ra));
         assert(!isnan(de));
