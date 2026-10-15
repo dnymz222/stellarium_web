@@ -10,7 +10,7 @@
  repository.
 -->
 
-<title>Stellarium Web Engine Page</title>
+<title>观星图</title>
 <meta charset="utf-8">
 
 <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
@@ -127,6 +127,21 @@
     display: flex;
     align-items: center;
     margin-left: auto;
+  }
+  .fov-readout {
+    display: none;
+    position: absolute;
+    bottom: 72px;
+    left: 50%;
+    transform: translate(-50%);
+    z-index: 1;
+    padding: 4px 12px;
+    border-radius: 14px;
+    background: rgba(33, 33, 33, 0.75);
+    color: #dddddd;
+    font-size: 13px;
+    user-select: none;
+    pointer-events: none;
   }
   .speed-label {
     font-family: monospace;
@@ -302,7 +317,7 @@
 
     <v-app-bar class="xsemi-transparent">
       <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
-      <v-toolbar-title class="hidden-sm-and-down">Stellarium<sup>Web</sup></v-toolbar-title>
+      <v-toolbar-title class="hidden-sm-and-down">观星图<sup>Web</sup></v-toolbar-title>
       <v-menu v-model="searchMenu" :close-on-content-click="false"
               offset-y bottom left max-height="320">
         <template v-slot:activator="{ on }">
@@ -510,6 +525,7 @@
       <canvas id="stel-canvas" style="position:absolute;"
               class="w-100 h-100">
       </canvas>
+      <div class="fov-readout" ref="fovReadout"></div>
       <v-card v-if="stel && stel.core.selection"
               style="position:absolute; top: 64px; width:430px;
                      max-height: calc(100vh - 160px); overflow-y: auto;
@@ -662,6 +678,13 @@
     if (isNaN(lat) || isNaN(lon)) return null;
     if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
     return {lat: lat, lon: lon};
+  }
+
+  // Language requested through the url (?lang=zhs); must match one of the
+  // appsource/<lang> folders and wins over the saved choice.
+  function urlLang() {
+    var lang = new URLSearchParams(window.location.search).get('lang');
+    return ['en', 'zhs', 'zht', 'ja'].indexOf(lang) >= 0 ? lang : '';
   }
 
   // Altitude in degrees of a body as seen by a (cloned) observer.
@@ -853,10 +876,10 @@
       wikiRest: '',
       wikiExpanded: false,
       akaExpanded: false,
-      lang: localStorage.getItem('sw-lang') || 'en',
+      lang: urlLang() || localStorage.getItem('sw-lang') || 'en',
       uiDict: {},
       nameDict: {},
-      searchIndex: [],
+      nameIndexVersion: 0,
       searchText: '',
       searchMenu: false,
       notice: '',
@@ -993,6 +1016,13 @@
       },
       stops: function() {
         if (!this.stelReady) return [];
+        // The samples only depend on the night and the location, but the
+        // computed is invalidated by the clock several times a second and the
+        // ~100 altitude computations cost about 20 ms: cache the result.
+        var key = this.sliderStartKey + '|' + this.locCoordStr;
+        var cache = this.stopsCache;
+        if (cache && (cache.key === key || Date.now() - cache.at < 250))
+          return cache.value;
         var stel = STEL;
         var res = [];
         var nbStop = 48;
@@ -1018,6 +1048,7 @@
           });
         }
         obs.destroy();
+        this.stopsCache = {key: key, at: Date.now(), value: res};
         return res;
       },
       sliderBg: function() {
@@ -1040,6 +1071,10 @@
       },
       searchResults: function() {
         var q = normName(this.searchText || '');
+        // The index itself is not reactive, so read the version to be
+        // recomputed when the language changes.
+        void this.nameIndexVersion;
+        var index = this.nameIndex;
         if (!q) return [];
         var that = this;
         var out = [];
@@ -1056,12 +1091,12 @@
         };
         var i, e;
         // Prefix matches first, then the rest.
-        for (i = 0; i < this.searchIndex.length && out.length < 8; i++) {
-          e = this.searchIndex[i];
+        for (i = 0; i < index.length && out.length < 8; i++) {
+          e = index[i];
           if (e.n.indexOf(q) === 0) push(e);
         }
-        for (i = 0; i < this.searchIndex.length && out.length < 8; i++) {
-          e = this.searchIndex[i];
+        for (i = 0; i < index.length && out.length < 8; i++) {
+          e = index[i];
           if (e.n.indexOf(q) > 0) push(e);
         }
         var dsgn = this.dsgnQuery(this.searchText);
@@ -1078,9 +1113,12 @@
       // that the gradient is recomputed when the observer moves.
       planetSunBg: function() {
         if (!this.stelReady) return 'none';
+        var key = this.sliderStartKey + '|' + this.locCoordStr;
+        var cache = this.sunBgCache;
+        if (cache && (cache.key === key || Date.now() - cache.at < 250))
+          return cache.value;
         var stel = STEL;
         var base = this.sliderStartKey;
-        var loc = this.locCoordStr;
         var obs = stel.core.observer.clone();
         var sun = stel.getObj('NAME Sun');
         var stops = [];
@@ -1093,13 +1131,20 @@
                      Math.round(i / 24 * 100) + '%');
         }
         obs.destroy();
-        return 'linear-gradient(to right,' + stops.join(',') + ')';
+        var bg = 'linear-gradient(to right,' + stops.join(',') + ')';
+        this.sunBgCache = {key: key, at: Date.now(), value: bg};
+        return bg;
       },
       planetRows: function() {
         if (!this.stelReady || !this.planetsDialog) return [];
+        // The rise/set of the slider day only changes with the day and the
+        // location, while the dialog re-renders with the clock: cache the rows,
+        // each of them costs one engine visibility computation.
+        var key = this.sliderStartKey + '|' + this.locCoordStr;
+        var cache = this.rowsCache;
+        if (cache && (cache.key === key || Date.now() - cache.at < 250))
+          return cache.value;
         var stel = STEL;
-        // Read so the rows are recomputed when the observer moves.
-        var loc = this.locCoordStr;
         var obs = stel.core.observer;
         var ttOffset = obs.tt - obs.utc;
         var startMjd = dateToMjd(this.sliderStart) + ttOffset;
@@ -1124,12 +1169,26 @@
             bars: visibilityBars(rise, set, alwaysUp)
           });
         }
+        this.rowsCache = {key: key, at: Date.now(), value: rows};
         return rows;
       }
     },
     watch: {
       selId: function() { this.akaExpanded = false; this.fetchWiki(); },
       searchText: function(v) { this.searchMenu = !!v; }
+    },
+    created: function() {
+      // Kept out of data on purpose.  The name index holds thousands of
+      // entries and is walked during rendering, where Vue would register a
+      // dependency per entry and turn every scan into seconds of work; the
+      // caches memoize expensive engine computations that only change with
+      // the hour or the location.
+      this.nameIndex = [];
+      this.nameLookup = Object.create(null);
+      this.visCache = null;
+      this.stopsCache = null;
+      this.sunBgCache = null;
+      this.rowsCache = null;
     },
     mounted: function() {
       var that = this;
@@ -1188,11 +1247,38 @@
           // above the horizon instead of only the pointed one.
           core.constellations.show_only_pointed = false
 
-          // Force ui update when there is any change.
+          // Force ui update when there is any change.  The engine reports one
+          // for every animated attribute on every frame (observer time, view
+          // angles, fps), so refresh at once for responsiveness but coalesce
+          // the rest: re-rendering per frame froze the page as soon as the
+          // selection card was open.
+          var lastStelRefresh = 0, stelRefreshTimer = null;
           stel.change(function(obj, attr) {
-            if (attr !== "hovered") {
+            if (attr === "hovered") return;
+            var refresh = function() {
+              lastStelRefresh = Date.now();
+              stelRefreshTimer = null;
               that.stel = Object.assign(Object.create(stel), {}, stel)
-            }
+            };
+            var wait = 200 - (Date.now() - lastStelRefresh);
+            if (wait <= 0) return refresh();
+            if (!stelRefreshTimer) stelRefreshTimer = setTimeout(refresh, wait);
+          })
+
+          // Transient FOV readout while zooming.  Updated straight on the DOM
+          // node: fov changes arrive every frame and must not trigger a full
+          // app re-render.
+          var fovTimer = null;
+          stel.change(function(obj, attr) {
+            if (attr !== 'fov') return;
+            var el = that.$refs.fovReadout;
+            if (!el) return;
+            el.textContent = that.t('FOV') + ' ' +
+              (stel.core.fov * 180 / Math.PI).toPrecision(3) + '°';
+            el.style.display = 'block';
+            clearTimeout(fovTimer);
+            fovTimer = setTimeout(function() { el.style.display = ''; },
+                                  2000);
           })
 
           // Roboto first, then a CJK subset as glyph fallback so translated
@@ -1245,8 +1331,12 @@
       // The English key itself always stays searchable, whatever the language.
       buildSearchIndex: function() {
         var entries = [];
+        var lookup = Object.create(null);
         var add = function(alias, key) {
-          if (alias) entries.push({n: normName(alias), alias: alias, key: key});
+          if (!alias) return;
+          var n = normName(alias);
+          entries.push({n: n, alias: alias, key: key});
+          if (!(n in lookup)) lookup[n] = key;
         };
         for (var key in this.nameDict) {
           add(key, key);
@@ -1254,7 +1344,9 @@
           for (var i = 0; i < aliases.length; i++) add(aliases[i], key);
           if (CSTS[CST_ABBR[key]]) add(CSTS[CST_ABBR[key]][1], key);
         }
-        this.searchIndex = entries;
+        this.nameIndex = entries;
+        this.nameLookup = lookup;
+        this.nameIndexVersion++;
       },
 
       monthDay: function(d) {
@@ -1614,7 +1706,20 @@
         if (phase && !isNaN(phase)) {
           ret.push({key: this.t('Phase'), value: (phase * 100).toFixed(0) + '%'});
         }
-        var vis = obj.computeVisibility();
+        // Rise and set times only change with the hour and the location, while
+        // the card is re-rendered several times a second, and the engine needs
+        // about 10 ms to compute them: cache the result.
+        var loc = obs.latitude + ',' + obs.longitude + ',' + obs.elevation;
+        var bucket = Math.floor(obs.utc * 24);
+        var cache = this.visCache;
+        if (!cache || cache.id !== obj.id || cache.loc !== loc ||
+            (cache.bucket !== bucket &&
+             Date.now() - cache.at > 300)) {
+          cache = this.visCache = {id: obj.id, loc: loc, bucket: bucket,
+                                   at: Date.now(),
+                                   value: obj.computeVisibility()};
+        }
+        var vis = cache.value;
         var vstr;
         if (!vis.length) {
           vstr = this.t('Not visible tonight');
@@ -1699,10 +1804,7 @@
             return cands[i];
         }
         var n = normName(this.getTitle(obj));
-        for (i = 0; i < this.searchIndex.length; i++) {
-          if (this.searchIndex[i].n === n) return this.searchIndex[i].key;
-        }
-        return null;
+        return this.nameLookup[n] || null;
       }
     }
   })
